@@ -5,7 +5,6 @@ import colors from '../../styles/colors';
 import logo from '../../assets/images/logo.png';
 
 export const Wrapper = styled.SafeAreaView`
-  flex: 0;
   background: ${colors.dark};
   flex-direction: row;
 `;
