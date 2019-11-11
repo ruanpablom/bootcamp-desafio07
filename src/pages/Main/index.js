@@ -1,7 +1,6 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { FlatList } from 'react-native';
 
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -22,35 +21,41 @@ import {
   AmountText,
 } from './styles';
 
-class Main extends Component {
-  state = {
-    products: [],
-  };
+export default function Main() {
+  const [products, setProducts] = useState([]);
 
-  async componentDidMount() {
-    const response = await api.get('products');
-    const data = response.data.map(p => ({
-      ...p,
-      priceFormatted: formatPrice(p.price),
-    }));
-    this.setState({ products: data });
+  const amount = useSelector(state =>
+    state.cart.reduce((amountOb, product) => {
+      amountOb[product.id] = product.amount;
+      return amountOb;
+    }, {})
+  );
+
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    async function loadProducts() {
+      const response = await api.get('products');
+      const data = response.data.map(p => ({
+        ...p,
+        priceFormatted: formatPrice(p.price),
+      }));
+      setProducts(data);
+    }
+    loadProducts();
+  }, []);
+
+  function handleAddProduct(id) {
+    dispatch(CartActions.addToCartRequest(id));
   }
 
-  handleAddProduct = id => {
-    const { addToCartRequest } = this.props;
-
-    addToCartRequest(id);
-  };
-
-  renderProduct = ({ item }) => {
-    const { amount } = this.props;
-
+  function renderProduct({ item }) {
     return (
       <Product key={item.id}>
         <Image source={{ uri: item.image }} />
         <Title>{item.title}</Title>
         <Price>{item.priceFormatted}</Price>
-        <AddButton onPress={() => this.handleAddProduct(item.id)}>
+        <AddButton onPress={() => handleAddProduct(item.id)}>
           <ProductAmount>
             <Icon name="add-shopping-cart" color="#fff" size={20} />
             <Amount>{amount[item.id] || 0}</Amount>
@@ -59,43 +64,17 @@ class Main extends Component {
         </AddButton>
       </Product>
     );
-  };
-
-  render() {
-    const { products } = this.state;
-    const { amount } = this.props;
-    return (
-      <Container>
-        <FlatList
-          data={products}
-          extraData={amount}
-          keyExtractor={item => String(item.id)}
-          renderItem={this.renderProduct}
-          showsVerticalScrollIndicator={false}
-        />
-      </Container>
-    );
   }
+
+  return (
+    <Container>
+      <FlatList
+        data={products}
+        extraData={amount}
+        keyExtractor={item => String(item.id)}
+        renderItem={renderProduct}
+        showsVerticalScrollIndicator={false}
+      />
+    </Container>
+  );
 }
-
-const mapStateToProps = state => ({
-  amount: state.cart.reduce((amount, product) => {
-    amount[product.id] = product.amount;
-    return amount;
-  }, {}),
-});
-
-const mapDispatchToProps = dispatch =>
-  bindActionCreators(CartActions, dispatch);
-
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(Main);
-
-Main.propTypes = {
-  amount: PropTypes.shape({
-    key: PropTypes.number,
-  }).isRequired,
-  addToCartRequest: PropTypes.func.isRequired,
-};
